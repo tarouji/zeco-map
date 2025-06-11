@@ -1,1 +1,144 @@
 <!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ゼーコガンニョム・マップテスト</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase SDK（互換モードで読み込む） -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlBcbdNNteEkYdiScNEqGAhNlKcJ3izoA",
+    authDomain: "zeco-testplay-map.firebaseapp.com",
+    databaseURL: "https://zeco-testplay-map-default-rtdb.firebaseio.com",
+    projectId: "zeco-testplay-map",
+    storageBucket: "zeco-testplay-map.firebasestorage.app",
+    messagingSenderId: "881171343659",
+    appId: "1:881171343659:web:2c45d373005192af613d6e"
+  };
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
+
+</head>
+
+<body>
+  <!-- ログインエリア -->
+  <div id="loginArea">
+    <h2>ログイン</h2>
+    <div>
+      <label for="teamSelect">チーム:</label>
+      <select id="teamSelect">
+        <option value="A">A軍</option>
+        <option value="B">B軍</option>
+      </select>
+    </div>
+    <div>
+      <label for="playerName">名前:</label>
+      <input type="text" id="playerName">
+    </div>
+    <div>
+      <label for="skill">技能:</label>
+      <input type="number" id="skill" min="0" max="12">
+    </div>
+    <div>
+      <label for="reflex">反応:</label>
+      <input type="number" id="reflex" min="0" max="12">
+    </div>
+    <div>
+      <label for="mind">精神:</label>
+      <input type="number" id="mind" min="0" max="12">
+    </div>
+    <div>
+      <button onclick="login()">ログイン</button>
+    </div>
+    <div id="loginError" style="color: red;"></div>
+  </div>
+
+  <!-- ゲームエリア -->
+  <div id="gameArea">
+    <!-- A軍パネル -->
+    <div id="leftPanel" class="teamPanel">
+      <h2>A軍</h2>
+
+      <!-- ポイント -->
+      <div class="pointControl">
+        <div class="pointLabel">ポイント</div>
+        <div class="pointRow">
+          <span id="pointA">0</span><span>ポイント</span>
+          <button onclick="adjustPoint('A', 1)">＋</button>
+          <button onclick="adjustPoint('A', -1)">－</button>
+        </div>
+      </div>
+
+      <!-- 出撃中ユニット -->
+      <h5>出撃中のユニット</h5>
+      <div id="unitStatusA"></div>
+
+      <!-- ユニット一覧 -->
+      <h5>出撃選択</h5>
+      <div class="unitList" id="unitListA"></div>
+    </div>
+
+    <!-- マップ -->
+    <div id="mapContainer">
+      <img id="mapImage" src="images/map.png">
+      <div id="hexLabels"></div>
+      <div id="unitLayer"></div>
+    </div>
+
+    <!-- B軍パネル -->
+    <div id="rightPanel" class="teamPanel">
+      <h2>B軍</h2>
+
+      <!-- ポイント -->
+      <div class="pointControl">
+        <div class="pointLabel">ポイント</div>
+        <div class="pointRow">
+          <span id="pointB">0</span><span>ポイント</span>
+          <button onclick="adjustPoint('B', 1)">＋</button>
+          <button onclick="adjustPoint('B', -1)">－</button>
+        </div>
+      </div>
+
+      <!-- 出撃中ユニット -->
+      <h5>出撃中のユニット</h5>
+      <div id="unitStatusB"></div>
+
+      <!-- ユニット一覧 -->
+      <h5>出撃選択</h5>
+      <div class="unitList" id="unitListB"></div>
+    </div>
+  </div>
+
+  <!-- サイコロ表示 -->
+<div id="diceArea" style="display: none;">
+  <span>行動サイコロ　<strong id="diceResult">-</strong></span>
+  <button onclick="rollDice()" id="rollButton">サイコロを振る</button>
+  <button onclick="resetDice()" id="resetButton">リセット</button>
+</div>
+
+
+
+  <!-- ミッション表示 -->
+<div id="missionArea" style="display: none;">
+</div>
+
+
+
+
+<div style="margin-top: 20px;"></div>
+
+<div id="buttonArea">
+  <div><button id="logoutButton" onclick="logout()">ログアウト</button></div>
+  <div><button onclick="resetGameData()">ゲーム初期化</button></div>
+</div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
+
