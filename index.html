@@ -117,18 +117,25 @@
   <!-- サイコロ表示 -->
 <div id="diceArea" style="display: none;">
   <span>行動サイコロ　<strong id="diceResult">-</strong></span>
-  <button onclick="rollDice()" id="rollButton">サイコロを振る</button>
-  <button onclick="resetDice()" id="resetButton">リセット</button>
+  <div style="margin-top: 10px;">
+    <button onclick="rollDice()" id="rollButton">サイコロを振る</button>
+    <button onclick="resetDice()" id="resetButton">リセット</button>
+  </div>
 </div>
-
 
 
   <!-- ミッション表示 -->
-<div id="missionArea" style="display: none;">
+<div id="commonMissionArea" class="missionAreaContainer" style="display:none;">
+  <h3>共通ミッション</h3>
+  <div id="commonMissions" class="missionGroup"></div>
 </div>
 
-
-
+<div id="teamMissionArea" class="missionAreaContainer" style="display:none;">
+  <div id="teamMissions" style="display: flex; gap: 20px;">
+    <div id="teamAMissions" class="missionGroup"></div>
+    <div id="teamBMissions" class="missionGroup"></div>
+  </div>
+</div>
 
 <div style="margin-top: 20px;"></div>
 
@@ -141,4 +148,3 @@
 
 </body>
 </html>
-

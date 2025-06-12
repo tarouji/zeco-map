@@ -26,6 +26,10 @@ let isMovingMode = false;
 
 let selectedTeam = null;
 let selectedUnit = null;
+
+let sharedMissionsData = null;
+let secretMissionsData = null;
+
 const occupiedCells = new Set();
 const occupiedUnits = new Set();
 
@@ -44,7 +48,6 @@ window.onload = () => {
   document.getElementById("resetButton").style.display = "none";
 };
 
-
 function login() {
   const team = document.getElementById("teamSelect").value;
   const name = document.getElementById("playerName").value.trim();
@@ -62,57 +65,63 @@ function login() {
     return;
   }
 
-  // エラーをクリア
   document.getElementById("loginError").textContent = "";
 
-  // プレイヤー情報を作成
+  // ✅ プレイヤー情報をここでセット
   playerInfo = { team, name, skill, reflex, mind };
 
-  // IDを生成してローカル保存（すでにある場合は再利用）
+  // ✅ ローカルIDを生成・保存
   const playerID = localStorage.getItem("playerID") || crypto.randomUUID();
   localStorage.setItem("playerID", playerID);
 
-  // Firebaseに保存
+  // ✅ Firebaseにプレイヤー情報登録
   firebase.database().ref(`players/${playerID}`).set(playerInfo);
 
-  // ログイン後の表示切り替え
-  document.getElementById("loginArea").style.display = "none";
-  document.getElementById("gameArea").style.display = "flex";
-  document.getElementById("diceArea").style.display = "block";
-  document.getElementById("missionArea").style.display = "flex";
-  document.getElementById("logoutButton").style.display = "inline-block";
+  // ✅ 表示切り替え
+  toggleGameUI(true);
 
-  // チームごとのユニット選択リストを表示
+  // ✅ ユニット選択リストとラベル表示
   renderUnitList("A");
   renderUnitList("B");
+  showAllHexLabels();
 
-  // チーム見出しの強調
+  // ✅ チーム名の強調表示
   document.querySelector(`#${team === 'A' ? 'leftPanel' : 'rightPanel'} h2`)
     .classList.add(team === 'A' ? 'selected-a' : 'selected-b');
 
-  // マス再描画
-  showAllHexLabels();
-
-  firebase.database().ref("units").on("value", snapshot => {
-    const units = snapshot.val();
-    updateUnitsFromFirebase(units);
-  });
-
+  // ✅ 初期化フラグの監視
   firebase.database().ref("resetFlag").on("value", snapshot => {
     if (snapshot.val()) {
-      // （中略）初期化処理
+      // （省略）初期化処理は fetch 監視と同様
     }
   });
 
-  // 🔽 ここに追加
+  // ✅ 初回ログイン時のみミッション初期化し、そのあと表示
   firebase.database().ref("missions").once("value", snapshot => {
     if (!snapshot.exists()) {
-      initializeMissions(); // 最初のログイン時に1度だけ実行
+      initializeMissions();
     }
+  
   });
-  showSharedMissions();
+
+  showSharedMissions();  // ← 削除せずにここは残す
+  console.log("ログイン完了", playerInfo);
 
 }
+
+function toggleGameUI(isLoggedIn) {
+  document.getElementById("loginArea").style.display = isLoggedIn ? "none" : "block";
+  document.getElementById("gameArea").style.display = isLoggedIn ? "flex" : "none";
+  document.getElementById("diceArea").style.display = isLoggedIn ? "block" : "none";
+
+  document.getElementById("commonMissionArea").style.display = isLoggedIn ? "block" : "none";
+  document.getElementById("teamMissionArea").style.display = isLoggedIn ? "block" : "none";
+
+  document.getElementById("logoutButton").style.display = isLoggedIn ? "inline-block" : "none";
+  document.getElementById("resetButton").style.display = isLoggedIn ? "inline-block" : "none";
+}
+
+
 
 function getHexPixelPosition(cellNumber) {
   const index = cellNumber - 1;
@@ -244,64 +253,41 @@ function highlightAllowedCells(team) {
 function placeUnitOnMap(cellNum, filename) {
   if (!cellNum || cellNum < 1 || cellNum > MAP_ROWS * MAP_COLUMNS) return;
 
-  const pos = getHexPixelPosition(cellNum);
-  const unitLayer = document.getElementById("unitLayer");
-  const img = document.createElement("img");
-  img.src = `images/${filename}`;
-  img.className = `unitOnMap ${selectedTeam.toLowerCase()}`;
-  img.style.left = `${pos.left}px`;
-  img.style.top = `${pos.top}px`;
-  unitLayer.appendChild(img);
+  // 🔒 unitInfoが未読込なら拒否
+  if (!unitInfo || !unitInfo[filename]) {
+    alert("ユニットデータの読み込みが完了していません。少し待ってから再試行してください。");
+    return;
+  }
 
+  const team = selectedTeam;
+
+  // s_unit のカウント
   let count = null;
   if (filename === "s_unit01.png" || filename === "s_unit02.png") {
     sUnitCount[filename] = (sUnitCount[filename] || 0) + 1;
     count = sUnitCount[filename];
-    if (count > 1) {
-      const label = document.createElement("div");
-      label.className = "unitNumberLabel";
-      label.innerText = `（${count}）`;
-      label.style.left = `${pos.left}px`;
-      label.style.top = `${pos.top - 20}px`;
-      unitLayer.appendChild(label);
-    }
   }
 
+  // unitXX の場合は出撃済みとして記録
   if (/^unit\d{2}\.png$/.test(filename)) {
     occupiedUnits.add(filename);
   }
 
+  // 配置済みセルとして記録
   occupiedCells.add(cellNum);
+
+  // 選択ユニット表示から削除
   removeUnitCard(filename);
   clearSelectedUnit();
+
+  // ユニットリスト更新
   renderUnitList("A");
   renderUnitList("B");
-  showUnitStatus(selectedTeam, filename, count);
 
-  const team = selectedTeam;
-  img.addEventListener("click", () => {
-    if (playerInfo && playerInfo.team !== team) return;
-    movingUnit = { img, filename };
-    isMovingMode = true;
-
-    document.querySelectorAll(".hexLabel").forEach(label => {
-      const cell = Number(label.dataset.cellnum);
-      if (!occupiedCells.has(cell)) {
-        label.classList.add("highlight-move");
-        label.onclick = () => {
-          moveUnitToCell(movingUnit, cell);
-          movingUnit = null;
-          isMovingMode = false;
-          clearMoveHighlights();
-        };
-      }
-    });
-  });
-
-  // ✅ 修正1：ユニットIDを生成し、Firebaseとローカルに記録
+  // ✅ 修正：Firebaseに登録（描画は updateUnitsFromFirebase に任せる）
   const safeFilename = filename.replace(/\./g, "_");
   const unitID = `${safeFilename}_${Date.now()}`;
-  unitInstanceCount[unitID] = true;  // ローカル記録
+  unitInstanceCount[unitID] = true;
 
   firebase.database().ref(`units/${unitID}`).set({
     unitID,
@@ -317,6 +303,7 @@ function placeUnitOnMap(cellNum, filename) {
   });
 }
 
+
 function removeUnitCard(filename) {
   if (/^unit\d{2}\.png$/.test(filename)) {
     const card = document.querySelector(`.unitCard[data-filename="${filename}"]`);
@@ -329,7 +316,7 @@ function clearUnitStatusPanels() {
   document.getElementById("unitStatusB").innerHTML = "";
 }
 
-function showUnitStatus(team, filename, count = null) {
+function showUnitStatus(team, filename, count = null, playerData = null) {
   const info = unitInfo[filename];
   if (!info) return;
 
@@ -347,22 +334,23 @@ function showUnitStatus(team, filename, count = null) {
   div.dataset.team = team;
   div.dataset.count = count || 1;
 
-  // 🔽 ここを修正：playerInfo が null のときは空欄にする
-  const playerName = playerInfo?.name || "（不明）";
-  const skill = playerInfo?.skill ?? "-";
-  const reflex = playerInfo?.reflex ?? "-";
-  const mind = playerInfo?.mind ?? "-";
+  const playerName = playerData?.playerName || "（不明）";
+  const skill = playerData?.skill ?? "-";
+  const reflex = playerData?.reflex ?? "-";
+  const mind = playerData?.mind ?? "-";
+
+  const currentHP = playerData?.hp ?? info.hp;  // 🔧 ここを修正！
 
   div.innerHTML = `
-    <div class="playerInfo">${playerName}</div>
-    <div class="playerStats">技術${skill} 反応${reflex} 精神${mind}</div>
     <div class="unitName">${labelName}</div>
     <div class="unitHP">
-      耐久値 <span class="hp">${info.hp}</span>
+      耐久値 <span class="hp">${currentHP}</span>
       <button onclick="adjustHP(this, +1)">＋</button>
       <button onclick="adjustHP(this, -1)">－</button>
       <button onclick="deleteUnit(this)">削除</button>
     </div>
+    <div class="playerInfo">${playerName}</div>
+    <div class="playerStats">技術${skill} 反応${reflex} 精神${mind}</div>
   `;
   container.appendChild(div);
 }
@@ -373,6 +361,23 @@ function adjustHP(button, delta) {
   let hp = parseInt(hpSpan.textContent);
   hp = Math.max(0, hp + delta);
   hpSpan.textContent = hp;
+
+  const unitDiv = button.closest(".unitStatus");
+  const filename = unitDiv.dataset.filename;
+  const team = unitDiv.dataset.team;
+  const count = parseInt(unitDiv.dataset.count);
+
+  // Firebaseに登録されているユニットIDを探す
+  firebase.database().ref("units").once("value").then(snapshot => {
+    const allUnits = snapshot.val();
+    for (const key in allUnits) {
+      const u = allUnits[key];
+      if (u && u.filename === filename && u.team === team && u.count === count) {
+        firebase.database().ref(`units/${key}/hp`).set(hp);
+        break;
+      }
+    }
+  });
 }
 
 function deleteUnit(button) {
@@ -405,8 +410,20 @@ function deleteUnit(button) {
         break;
       }
     }
-    sUnitCount[filename]--;
   }
+
+  // occupiedCells から cellNum を削除（Firebaseから位置取得）
+  firebase.database().ref("units").once("value").then(snapshot => {
+    const allUnits = snapshot.val();
+    for (const key in allUnits) {
+      const u = allUnits[key];
+      if (u && u.filename === filename && u.team === team && u.count === count) {
+        firebase.database().ref(`units/${key}`).remove();  // Firebaseから削除
+        occupiedCells.delete(u.cellNum);  // ローカルから削除
+        break;
+      }
+    }
+  });
 
   // ユニット情報削除
   unitDiv.remove();
@@ -428,11 +445,22 @@ function clearMoveHighlights() {
 function moveUnitToCell(unit, newCellNum) {
   if (!unit || !unit.unitID || !newCellNum) return;
 
-  const pos = getHexPixelPosition(newCellNum);
-  unit.img.style.left = `${pos.left}px`;
-  unit.img.style.top = `${pos.top}px`;
+  // 🔽 Firebase から元の cellNum を取得して、occupiedCells から削除
+  firebase.database().ref(`units/${unit.unitID}/cellNum`).once("value", snapshot => {
+    const oldCellNum = snapshot.val();
+    if (oldCellNum) occupiedCells.delete(oldCellNum);  // ← 元のマスを空きに
 
-  firebase.database().ref(`units/${unit.unitID}/cellNum`).set(newCellNum);
+    // 🔽 新しい位置にユニットを移動
+    const pos = getHexPixelPosition(newCellNum);
+    unit.img.style.left = `${pos.left}px`;
+    unit.img.style.top = `${pos.top}px`;
+
+    // 🔽 新しいマスを occupied に追加
+    occupiedCells.add(newCellNum);
+
+    // 🔽 Firebase にも更新
+    firebase.database().ref(`units/${unit.unitID}/cellNum`).set(newCellNum);
+  });
 }
 
 
@@ -443,53 +471,146 @@ function getUnitIDFromImg(src) {
   return allKeys.find(key => key.startsWith(filename));
 }
 
+function clearMoveMode() {
+  movingUnit = null;
+  isMovingMode = false;
+  clearMoveHighlights();
+}
 
 function showSharedMissions() {
   firebase.database().ref("missions").on("value", snapshot => {
-    const missions = snapshot.val();
-    if (!missions) return;
+    sharedMissionsData = snapshot.val();
+    renderMissions();
+  });
 
-    const container = document.getElementById("missionArea");
-    container.innerHTML = "";
-
-    missions.forEach((mission, index) => {
-      const wrapper = document.createElement("div");
-      wrapper.className = "missionWrapper";
-
-      const img = document.createElement("img");
-      img.src = `images/mission/${mission.filename}`;
-      img.className = "missionCard";
-
-      const label = document.createElement("div");
-      label.className = "clearLabel";
-      label.innerText = "クリア";
-      label.style.display = mission.cleared ? "block" : "none";
-
-      const buttonArea = document.createElement("div");
-      buttonArea.className = "missionButtons";
-
-      const clearBtn = document.createElement("button");
-      clearBtn.innerText = "クリア";
-      clearBtn.onclick = () => {
-        firebase.database().ref(`missions/${index}/cleared`).set(true);
-      };
-
-      const resetBtn = document.createElement("button");
-      resetBtn.innerText = "戻す";
-      resetBtn.onclick = () => {
-        firebase.database().ref(`missions/${index}/cleared`).set(false);
-      };
-
-      buttonArea.appendChild(clearBtn);
-      buttonArea.appendChild(resetBtn);
-
-      wrapper.appendChild(img);
-      wrapper.appendChild(label);
-      wrapper.appendChild(buttonArea);
-      container.appendChild(wrapper);
-    });
+  firebase.database().ref("secretMissions").on("value", snapshot => {
+    secretMissionsData = snapshot.val();
+    renderMissions();
   });
 }
+
+
+function renderMissions() {
+  // 共通ミッション描画先
+  const commonContainer = document.getElementById("commonMissions");
+  commonContainer.innerHTML = "";
+  if (sharedMissionsData) {
+    sharedMissionsData.forEach((mission, index) => {
+      const wrapper = createMissionCard(mission, index, "missions");
+      commonContainer.appendChild(wrapper);
+    });
+  }
+
+  // チーム別ミッション描画先
+  const aContainer = document.getElementById("teamAMissions");
+  const bContainer = document.getElementById("teamBMissions");
+  aContainer.innerHTML = "";
+  bContainer.innerHTML = "";
+
+  if (!playerInfo) return;
+
+  // A軍ミッションタイトル
+  const aTitle = document.createElement("h3");
+  if (secretMissionsData?.A) {
+    aTitle.textContent = secretMissionsData.A.revealed ? "A軍ミッション（公開中）" : "A軍ミッション（非公開）";
+  } else {
+    aTitle.textContent = "A軍ミッション（非公開）";
+  }
+  aContainer.appendChild(aTitle);
+
+  // B軍ミッションタイトル
+  const bTitle = document.createElement("h3");
+  if (secretMissionsData?.B) {
+    bTitle.textContent = secretMissionsData.B.revealed ? "B軍ミッション（公開中）" : "B軍ミッション（非公開）";
+  } else {
+    bTitle.textContent = "B軍ミッション（非公開）";
+  }
+  bContainer.appendChild(bTitle);
+
+  // A軍ミッション画像（条件付き表示）
+  if (secretMissionsData?.A) {
+    if (secretMissionsData.A.revealed || playerInfo.team === "A") {
+      const aWrapper = createSecretMissionCard(secretMissionsData.A, "A", secretMissionsData.A.revealed);
+      aContainer.appendChild(aWrapper);
+    }
+  }
+
+  // B軍ミッション画像（条件付き表示）
+  if (secretMissionsData?.B) {
+    if (secretMissionsData.B.revealed || playerInfo.team === "B") {
+      const bWrapper = createSecretMissionCard(secretMissionsData.B, "B", secretMissionsData.B.revealed);
+      bContainer.appendChild(bWrapper);
+    }
+  }
+}
+
+function createMissionCard(mission, index, pathPrefix) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "missionWrapper";
+
+  const img = document.createElement("img");
+  img.src = `images/mission/${mission.filename}`;
+  img.className = "missionCard";
+
+  const label = document.createElement("div");
+  label.className = "clearLabel";
+  label.innerText = "クリア";
+  label.style.display = mission.cleared ? "block" : "none";
+
+  const buttonArea = document.createElement("div");
+  buttonArea.className = "missionButtons";
+
+  const clearBtn = document.createElement("button");
+  clearBtn.innerText = "クリア";
+  clearBtn.onclick = () => {
+    firebase.database().ref(`${pathPrefix}/${index}/cleared`).set(true);
+  };
+
+  const resetBtn = document.createElement("button");
+  resetBtn.innerText = "戻す";
+  resetBtn.onclick = () => {
+    firebase.database().ref(`${pathPrefix}/${index}/cleared`).set(false);
+  };
+
+  buttonArea.appendChild(clearBtn);
+  buttonArea.appendChild(resetBtn);
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(label);
+  wrapper.appendChild(buttonArea);
+
+  return wrapper;
+}
+
+function createSecretMissionCard(mission, team, isRevealed) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "missionWrapper";
+
+  const img = document.createElement("img");
+  img.src = `images/mission/${mission.filename}`;
+  img.className = "missionCard";
+  // ここでクラスを付ける
+  img.classList.add(team === "A" ? "secret-a" : "secret-b");
+
+  wrapper.appendChild(img);
+
+  if (!isRevealed) {
+    const buttonArea = document.createElement("div");
+    buttonArea.className = "missionButtons";
+
+    const revealBtn = document.createElement("button");
+    revealBtn.innerText = "クリア（公開）";
+    revealBtn.onclick = () => {
+      firebase.database().ref(`secretMissions/${team}/revealed`).set(true);
+    };
+
+    buttonArea.appendChild(revealBtn);
+    wrapper.appendChild(buttonArea);
+  }
+
+  return wrapper;
+}
+
 
 function initializeMissions() {
   const all = [
@@ -497,34 +618,75 @@ function initializeMissions() {
     "mission05.png", "mission06.png", "mission07.png", "mission08.png",
     "mission09.png", "mission10.png", "mission11.png", "mission12.png"
   ];
-  const selected = all.sort(() => 0.5 - Math.random()).slice(0, 5);
-  const data = selected.map(filename => ({ filename, cleared: false }));
 
-  firebase.database().ref("missions").set(data);
+  const shuffled = all.sort(() => 0.5 - Math.random());
+  const common = shuffled.slice(0, 5);     // 共通5枚
+  const secretA = shuffled[5];             // A軍の秘密ミッション
+  const secretB = shuffled[6];             // B軍の秘密ミッション
+
+  // 共通ミッションを保存
+  firebase.database().ref("missions").set(common.map(filename => ({
+    filename,
+    cleared: false
+  })));
+
+  // 🔽 秘密ミッションを保存（←これが追加された重要ポイント！）
+  firebase.database().ref("secretMissions").set({
+    A: { filename: secretA, revealed: false },
+    B: { filename: secretB, revealed: false }
+  });
 }
 
+
 let unitInfo = {};
+
 fetch('unit_data.json')
   .then(response => response.json())
   .then(data => {
     unitInfo = data;
-    showAllHexLabels();
-    selectTeam('A');
-    renderUnitList('B');
-    showSharedMissions();  // ミッションを表示
 
-    // ユニット情報の同期
+    // ヘックスラベル表示
+    showAllHexLabels();
+
+    // チームAを選択状態にする
+    selectTeam('A');
+
+    // チームBのユニットリストを表示
+    renderUnitList('B');
+
+    // ミッションを表示
+    showSharedMissions();
+
+    // ユニットのリアルタイム同期
     firebase.database().ref("units").on("value", snapshot => {
       const units = snapshot.val();
       updateUnitsFromFirebase(units);
     });
 
-    // 🔁 resetFlag の監視（誰かが初期化したら全員ログアウト）
+    // ポイントAのリアルタイム監視
+    firebase.database().ref("points/A").on("value", snapshot => {
+      const val = snapshot.val();
+      if (val !== null) {
+        teamPoints.A = val;
+        document.getElementById("pointA").textContent = val;
+      }
+    });
+
+    // ポイントBのリアルタイム監視
+    firebase.database().ref("points/B").on("value", snapshot => {
+      const val = snapshot.val();
+      if (val !== null) {
+        teamPoints.B = val;
+        document.getElementById("pointB").textContent = val;
+      }
+    });
+
+    // リセットフラグ監視（ゲーム初期化時の処理）
     firebase.database().ref("resetFlag").on("value", snapshot => {
       if (snapshot.val()) {
         alert("ゲームが初期化されました。再ログインしてください。");
 
-        // ローカルデータのクリア
+        // ローカル保存クリア
         localStorage.removeItem("playerID");
         playerInfo = null;
 
@@ -534,27 +696,34 @@ fetch('unit_data.json')
         document.getElementById("diceArea").style.display = "none";
         document.getElementById("missionArea").style.display = "none";
 
-        // 画面内容の初期化
+        // 画面の初期化
         document.getElementById("unitLayer").innerHTML = "";
         document.getElementById("diceResult").textContent = "-";
         document.getElementById("rollButton").disabled = false;
+
         occupiedCells.clear();
         occupiedUnits.clear();
+
         renderUnitList("A");
         renderUnitList("B");
 
-        // フラグを削除（次回のため）
+        // フラグ削除
         firebase.database().ref("resetFlag").remove();
       }
     });
+
   });
 
 
-  function adjustPoint(team, delta) {
+function adjustPoint(team, delta) {
   teamPoints[team] += delta;
   if (teamPoints[team] < 0) teamPoints[team] = 0;
   document.getElementById(`point${team}`).textContent = teamPoints[team];
+
+  // ✅ Firebaseに保存
+  firebase.database().ref(`points/${team}`).set(teamPoints[team]);
 }
+
 
 function rollDice() {
   const result = Math.floor(Math.random() * 6) + 1;
@@ -570,25 +739,22 @@ function rollDice() {
   document.getElementById("rollButton").disabled = true;
 }
 
-// Firebaseのdiceノードを監視して出目を反映
 firebase.database().ref("dice").on("value", (snapshot) => {
   const data = snapshot.val();
-  
+
   if (!data) {
-    // リセット時：全員に「-」を表示し、ボタンを有効化
+    // 🔁 リセットされたとき（全員に反映）
     document.getElementById("diceResult").textContent = "-";
     document.getElementById("rollButton").disabled = false;
     return;
   }
 
-  // サイコロを振ったときの処理（そのまま）
+  // 🎲 サイコロを振ったとき（全員に出目を表示し、再振りを禁止）
   const result = data.value;
-  const rolledBy = data.rolledBy;
-  const myID = localStorage.getItem("playerID");
-
   document.getElementById("diceResult").textContent = result;
   document.getElementById("rollButton").disabled = true;
 });
+
 
 function resetDice() {
   firebase.database().ref("dice").set(null);  // Firebaseから削除
@@ -598,27 +764,37 @@ function resetDice() {
   document.getElementById("rollButton").disabled = false;
 }
 
-firebase.database().ref("units").on("value", (snapshot) => {
-  const allUnits = snapshot.val();
-  if (!allUnits) return;
 
+function updateUnitsFromFirebase(units) {
+  const containerA = document.getElementById("unitListA");
+  const containerB = document.getElementById("unitListB");
+  containerA.innerHTML = "";
+  containerB.innerHTML = "";
+
+  occupiedUnits.clear();
+  occupiedCells.clear();
   document.getElementById("unitLayer").innerHTML = "";
+  clearUnitStatusPanels();
 
-  for (const key in allUnits) {
-    const u = allUnits[key];
-    if (!u || !u.filename || !u.cellNum || !u.team) continue;
+  for (const key in units) {
+    const u = units[key];
+    if (!u || !u.team || !u.filename || !u.cellNum) continue;
+
+    if (/^unit\d{2}\.png$/.test(u.filename)) {
+      occupiedUnits.add(u.filename);
+    }
+
+    occupiedCells.add(u.cellNum);
 
     const pos = getHexPixelPosition(u.cellNum);
-
-    // ユニット画像を生成してマップに配置
     const img = document.createElement("img");
     img.src = `images/${u.filename}`;
     img.className = `unitOnMap ${u.team.toLowerCase()}`;
     img.style.left = `${pos.left}px`;
     img.style.top = `${pos.top}px`;
+    img.dataset.unitid = u.unitID || key;
     document.getElementById("unitLayer").appendChild(img);
 
-    // s_unit 用のカウントラベル（2以上のとき）
     if ((u.filename === "s_unit01.png" || u.filename === "s_unit02.png") && u.count > 1) {
       const label = document.createElement("div");
       label.className = "unitNumberLabel";
@@ -628,127 +804,63 @@ firebase.database().ref("units").on("value", (snapshot) => {
       document.getElementById("unitLayer").appendChild(label);
     }
 
-    // 🔽 ここでクリックイベントを付けて、移動モードに入れるようにする
     img.addEventListener("click", () => {
       if (playerInfo && playerInfo.team !== u.team) return;
 
-      movingUnit = { img, filename: u.filename, unitID: key };
+      const clickedUnitID = u.unitID || key;
+
+      // ✅ 同じユニットをもう一度クリックしたらキャンセル
+      if (isMovingMode && movingUnit?.unitID === clickedUnitID) {
+        clearMoveMode();
+        return;
+      }
+
+      movingUnit = { img, filename: u.filename, unitID: clickedUnitID };
       isMovingMode = true;
 
       document.querySelectorAll(".hexLabel").forEach(label => {
         const cell = Number(label.dataset.cellnum);
+        label.classList.remove("highlight-move");
+
         if (!occupiedCells.has(cell)) {
           label.classList.add("highlight-move");
           label.onclick = () => {
             moveUnitToCell(movingUnit, cell);
-            movingUnit = null;
-            isMovingMode = false;
-            clearMoveHighlights();
+            clearMoveMode();
+          };
+        } else {
+          label.onclick = () => {
+            clearMoveMode();
           };
         }
       });
     });
-  }
-});
 
-
-function updateUnitsFromFirebase(units) {
-  const containerA = document.getElementById("unitListA");
-  const containerB = document.getElementById("unitListB");
-  containerA.innerHTML = "";
-  containerB.innerHTML = "";
-
-  // 🔧 出撃済みユニットを初期化してから再登録（重要！）
-  occupiedUnits.clear();
-
-  // 🔧 出撃中ユニットステータスの表示もリセット（追加！）
-  clearUnitStatusPanels();
-
-  for (const key in units) {
-    const u = units[key];
-
-    // 不完全なデータはスキップ
-    if (!u || !u.team || !u.filename || !u.cellNum) continue;
-
-    // 🔧 出撃済みユニットを記録（unitXX系のみ）
-    if (/^unit\d{2}\.png$/.test(u.filename)) {
-      occupiedUnits.add(u.filename);
-    }
-
-    if (!playerInfo) return;  // またはプレイヤー未ログインならスキップ
-
-    // 🔽 出撃中ユニット一覧の表示（左・右）
-    const wrapper = document.createElement("div");
-    wrapper.className = "unitWrapper";
-
-    const img = document.createElement("img");
-    img.src = `images/${u.filename}`;
-    img.className = "unitOnMap";
-
-    const label = document.createElement("div");
-    label.innerText = `${u.playerName}（技${u.skill} 反${u.reflex} 精${u.mind}）`;
-
-    const hpArea = document.createElement("div");
-    hpArea.className = "hpArea";
-
-    const hpMinus = document.createElement("button");
-    hpMinus.innerText = "-";
-    hpMinus.onclick = () => {
-      if (u.hp > 0) {
-        firebase.database().ref(`units/${key}/hp`).set(u.hp - 1);
-      }
-    };
-
-    const hpDisplay = document.createElement("span");
-    hpDisplay.innerText = u.hp;
-    hpDisplay.className = "hpDisplay";
-
-    const hpPlus = document.createElement("button");
-    hpPlus.innerText = "+";
-    hpPlus.onclick = () => {
-      firebase.database().ref(`units/${key}/hp`).set(u.hp + 1);
-    };
-
-    hpArea.appendChild(hpMinus);
-    hpArea.appendChild(hpDisplay);
-    hpArea.appendChild(hpPlus);
-
-    label.appendChild(hpArea);
-    wrapper.appendChild(img);
-    wrapper.appendChild(label);
-
-    if (u.team === "A") {
-      containerA.appendChild(wrapper);
-    } else if (u.team === "B") {
-      containerB.appendChild(wrapper);
-    }
-
-    // 🔽 出撃中ユニットステータスエリアにも表示（重要！）
-    showUnitStatus(u.team, u.filename, u.count);
+    showUnitStatus(u.team, u.filename, u.count, u);
   }
 
-  // 🔁 ユニットリストを再表示（出撃可能ユニット）
   renderUnitList("A");
   renderUnitList("B");
 }
 
 function logout() {
-  // ローカル情報を削除（ただし Firebase データは消さない）
+  // ローカルデータの削除
   localStorage.removeItem("playerID");
   playerInfo = null;
 
-  // 表示を初期状態に戻す
-  document.getElementById("loginArea").style.display = "block";
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("diceArea").style.display = "none";
-  document.getElementById("missionArea").style.display = "none";
-  document.getElementById("logoutButton").style.display = "none";
+  // ✅ 表示切替（共通関数を使用）
+  toggleGameUI(false);
+  document.getElementById("missionArea").innerHTML = "";
 
-  // 選択状態もクリア
+  // 選択状態のリセット
   selectedUnit = null;
   selectedTeam = null;
   clearSelectedUnit();
+
+  // ✅ Firebaseのユニット監視を解除（これが今回のポイント！）
+  firebase.database().ref("units").off("value");
 }
+
 
 function resetGameData() {
   if (!confirm("本当にすべてのプレイヤーとユニット情報を初期化しますか？")) return;
@@ -756,29 +868,32 @@ function resetGameData() {
   firebase.database().ref("players").remove();
   firebase.database().ref("units").remove();
   firebase.database().ref("dice").remove();
+  firebase.database().ref("points").remove();  // ここでポイントも削除
 
-  // ✅ ミッションも初期化（ここが重要！）
   initializeMissions();
 
   firebase.database().ref("resetFlag").set(true);
 
   alert("ゲームデータを初期化しました。");
 
-  // 自分の画面も初期化（すぐ反映させる）
+  sUnitCount["s_unit01.png"] = 0;
+  sUnitCount["s_unit02.png"] = 0;
+
+  // ローカルのポイントもリセット
+  teamPoints.A = 0;
+  teamPoints.B = 0;
+  document.getElementById("pointA").textContent = "0";
+  document.getElementById("pointB").textContent = "0";
+
   localStorage.removeItem("playerID");
   playerInfo = null;
 
-  document.getElementById("loginArea").style.display = "block";
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("diceArea").style.display = "none";
-  document.getElementById("missionArea").style.display = "none";
+  toggleGameUI(false);
   document.getElementById("unitLayer").innerHTML = "";
   document.getElementById("diceResult").textContent = "-";
   document.getElementById("rollButton").disabled = false;
-  document.getElementById("logoutButton").style.display = "none";
   occupiedCells.clear();
   occupiedUnits.clear();
   renderUnitList("A");
   renderUnitList("B");
 }
-
