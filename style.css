@@ -10,6 +10,8 @@ body {
   align-items: flex-start;
   gap: 20px;
   padding: 20px;
+  flex-wrap: nowrap;
+  flex-direction: row;
 }
 
 .teamPanel {
@@ -50,22 +52,26 @@ body {
   box-shadow: 0 0 5px blue;
 }
 
+/* マップ周り */
 #mapContainer {
-  width: 900px; /* PC用の固定幅 */
-  max-width: 900px; /* 最大幅を固定 */
+  width: 100%;
+  max-width: 900px; /* PCの最大幅 */
   position: relative;
+  margin: 0 auto;
 }
 
 #mapImage {
-  width: 900px; /* 画像の幅も固定 */
+  width: 100%; /* 親幅に合わせてリサイズ */
   height: auto;
+  display: block;
 }
-
 
 #hexLabels {
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .hexLabel {
@@ -98,9 +104,11 @@ body {
   pointer-events: none;
 }
 
+/* ユニットの大きさをマップ幅に連動 */
 .unitOnMap {
   position: absolute;
-  width: 35px;
+  width: 4.0vw;  /* 画面幅の4% */
+  max-width: 35px; /* 最大35px */
   transform: translate(-50%, -50%);
   pointer-events: auto;
 }
@@ -301,6 +309,7 @@ body {
   border: 4px solid blue;
 }
 
+/* スマホ対応 */
 @media (max-width: 768px) {
   #gameArea {
     flex-direction: column;
@@ -309,31 +318,16 @@ body {
 
   .teamPanel {
     width: 90%;
+    max-width: 350px;
+    margin-bottom: 20px;
   }
 
   #mapContainer {
     width: 100%;
+    max-width: 900px;
   }
 
   .missionCard {
     width: 120px;
   }
-}
-
-.missionAreaContainer {
-  margin-top: 20px;
-  padding: 10px;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  max-width: 800px; /* 必要に応じ調整 */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.missionGroup {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  min-width: 180px;
 }
