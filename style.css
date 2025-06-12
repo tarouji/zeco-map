@@ -1,22 +1,28 @@
-body {
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;  /* 横スクロールを許可 */
   font-family: sans-serif;
   background-color: #eee;
   text-align: center;
 }
 
 #gameArea {
-  display: none;  /* 初期は非表示に */
-  justify-content: center;
+  display: none;  /* 初期は非表示 */
+  justify-content: flex-start;  /* 左寄せで横並び */
   align-items: flex-start;
   gap: 20px;
   padding: 20px;
-  flex-wrap: nowrap;
+  min-width: 900px;  /* 横幅固定 */
+  flex-wrap: nowrap; /* 折り返さず横並び固定 */
   flex-direction: row;
+  overflow-x: auto;
 }
 
 .teamPanel {
   width: 200px;
   text-align: left;
+  flex-shrink: 0;  /* 縮小不可 */
 }
 
 .unitList {
@@ -52,16 +58,14 @@ body {
   box-shadow: 0 0 5px blue;
 }
 
-/* マップ周り */
 #mapContainer {
-  width: 100%;
-  max-width: 900px; /* PCの最大幅 */
+  width: 900px;  /* マップ幅固定 */
   position: relative;
-  margin: 0 auto;
+  flex-shrink: 0; /* 縮小不可 */
 }
 
 #mapImage {
-  width: 100%; /* 親幅に合わせてリサイズ */
+  width: 900px;
   height: auto;
   display: block;
 }
@@ -70,8 +74,6 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
 }
 
 .hexLabel {
@@ -104,11 +106,9 @@ body {
   pointer-events: none;
 }
 
-/* ユニットの大きさをマップ幅に連動 */
 .unitOnMap {
   position: absolute;
-  width: 4.0vw;  /* 画面幅の4% */
-  max-width: 35px; /* 最大35px */
+  width: 35px;
   transform: translate(-50%, -50%);
   pointer-events: auto;
 }
@@ -309,25 +309,41 @@ body {
   border: 4px solid blue;
 }
 
-/* スマホ対応 */
+/* スマホでもPCと同じレイアウトを保持し、横スクロールを許可 */
 @media (max-width: 768px) {
   #gameArea {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .teamPanel {
-    width: 90%;
-    max-width: 350px;
-    margin-bottom: 20px;
+    min-width: 900px;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
   }
 
   #mapContainer {
-    width: 100%;
-    max-width: 900px;
+    width: 900px;
+    flex-shrink: 0;
   }
 
-  .missionCard {
-    width: 120px;
+  .teamPanel {
+    width: 200px;
+    flex-shrink: 0;
   }
+}
+
+.missionAreaContainer {
+  margin-top: 20px;
+  padding: 10px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  max-width: 800px; /* 必要に応じ調整 */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.missionGroup {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 180px;
 }
