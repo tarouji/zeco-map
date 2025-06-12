@@ -51,14 +51,16 @@ body {
 }
 
 #mapContainer {
+  width: 900px; /* PC用の固定幅 */
+  max-width: 900px; /* 最大幅を固定 */
   position: relative;
-  width: 900px;
 }
 
 #mapImage {
-  width: 100%;
-  display: block;
+  width: 900px; /* 画像の幅も固定 */
+  height: auto;
 }
+
 
 #hexLabels {
   position: absolute;
