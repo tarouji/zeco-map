@@ -510,20 +510,20 @@ function renderMissions() {
   if (!playerInfo) return;
 
   // A軍ミッションタイトル
-  const aTitle = document.createElement("h3");
+  const aTitle = document.createElement("h4");
   if (secretMissionsData?.A) {
-    aTitle.textContent = secretMissionsData.A.revealed ? "A軍ミッション（公開中）" : "A軍ミッション（非公開）";
+    aTitle.textContent = secretMissionsData.A.revealed ? "A軍（公開中）" : "A軍（非公開）";
   } else {
-    aTitle.textContent = "A軍ミッション（非公開）";
+    aTitle.textContent = "A軍（非公開）";
   }
   aContainer.appendChild(aTitle);
 
   // B軍ミッションタイトル
-  const bTitle = document.createElement("h3");
+  const bTitle = document.createElement("h4");
   if (secretMissionsData?.B) {
-    bTitle.textContent = secretMissionsData.B.revealed ? "B軍ミッション（公開中）" : "B軍ミッション（非公開）";
+    bTitle.textContent = secretMissionsData.B.revealed ? "B軍（公開中）" : "B軍（非公開）";
   } else {
-    bTitle.textContent = "B軍ミッション（非公開）";
+    bTitle.textContent = "B軍（非公開）";
   }
   bContainer.appendChild(bTitle);
 
@@ -599,7 +599,7 @@ function createSecretMissionCard(mission, team, isRevealed) {
     buttonArea.className = "missionButtons";
 
     const revealBtn = document.createElement("button");
-    revealBtn.innerText = "クリア（公開）";
+    revealBtn.innerText = "公開する";
     revealBtn.onclick = () => {
       firebase.database().ref(`secretMissions/${team}/revealed`).set(true);
     };

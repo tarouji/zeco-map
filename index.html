@@ -2,32 +2,32 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ゼーコガンニョム・マップテスト</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ゼーコガンニョム・マップ</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase SDK（互換モードで読み込む） -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDlBcbdNNteEkYdiScNEqGAhNlKcJ3izoA",
-    authDomain: "zeco-testplay-map.firebaseapp.com",
-    databaseURL: "https://zeco-testplay-map-default-rtdb.firebaseio.com",
-    projectId: "zeco-testplay-map",
-    storageBucket: "zeco-testplay-map.firebasestorage.app",
-    messagingSenderId: "881171343659",
-    appId: "1:881171343659:web:2c45d373005192af613d6e"
-  };
-
-  const app = firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-</script>
-
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDlBcbdNNteEkYdiScNEqGAhNlKcJ3izoA",
+      authDomain: "zeco-testplay-map.firebaseapp.com",
+      databaseURL: "https://zeco-testplay-map-default-rtdb.firebaseio.com",
+      projectId: "zeco-testplay-map",
+      storageBucket: "zeco-testplay-map.appspot.com",
+      messagingSenderId: "881171343659",
+      appId: "1:881171343659:web:2c45d373005192af613d6e"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
 </head>
 
 <body>
   <!-- ログインエリア -->
   <div id="loginArea">
+    <h3>ゼーコガンニョム・テストプレイ</h3>
     <h2>ログイン</h2>
     <div>
       <label for="teamSelect">チーム:</label>
@@ -63,8 +63,6 @@
     <!-- A軍パネル -->
     <div id="leftPanel" class="teamPanel">
       <h2>A軍</h2>
-
-      <!-- ポイント -->
       <div class="pointControl">
         <div class="pointLabel">ポイント</div>
         <div class="pointRow">
@@ -73,28 +71,54 @@
           <button onclick="adjustPoint('A', -1)">－</button>
         </div>
       </div>
-
-      <!-- 出撃中ユニット -->
       <h5>出撃中のユニット</h5>
       <div id="unitStatusA"></div>
-
-      <!-- ユニット一覧 -->
       <h5>出撃選択</h5>
       <div class="unitList" id="unitListA"></div>
     </div>
 
-    <!-- マップ -->
-    <div id="mapContainer">
-      <img id="mapImage" src="images/map.png">
-      <div id="hexLabels"></div>
-      <div id="unitLayer"></div>
+    <!-- 中央揃え要素（マップ＋サイコロ＋ミッション＋ボタン） -->
+    <div id="mapCenterWrapper">
+      <div id="mapContainer">
+        <img id="mapImage" src="images/map.png">
+        <div id="hexLabels"></div>
+        <div id="unitLayer"></div>
+      </div>
+
+      <!-- サイコロエリア -->
+      <div id="diceArea" style="display: none;">
+        <span>行動サイコロ　<strong id="diceResult">-</strong></span>
+        <div style="margin-top: 10px;">
+          <button onclick="rollDice()" id="rollButton">サイコロを振る</button>
+          <button onclick="resetDice()" id="resetButton">リセット</button>
+        </div>
+      </div>
+
+      <!-- 共通ミッション -->
+      <div id="commonMissionArea" class="missionAreaContainer" style="display: none;">
+        <h4>共通ミッション</h4>
+        <div id="commonMissions" class="missionGroup"></div>
+      </div>
+
+      <!-- 自軍ミッション -->
+      <div id="teamMissionArea" class="missionAreaContainer" style="display: none;">
+        <h4>自軍ミッション</h4>
+        <div id="teamMissions" style="display: flex; gap: 20px;">
+          <div id="teamAMissions" class="missionGroup"></div>
+          <div id="teamBMissions" class="missionGroup"></div>
+        </div>
+      </div>
+
+      <!-- ログアウト・初期化ボタン -->
+      <div id="buttonArea">
+        <div><button id="logoutButton" onclick="logout()">ログアウト</button></div>
+        <div><button onclick="resetGameData()">ゲーム初期化</button></div>
+      </div>
     </div>
 
     <!-- B軍パネル -->
     <div id="rightPanel" class="teamPanel">
       <h2>B軍</h2>
-
-      <!-- ポイント -->
       <div class="pointControl">
         <div class="pointLabel">ポイント</div>
         <div class="pointRow">
@@ -103,48 +127,13 @@
           <button onclick="adjustPoint('B', -1)">－</button>
         </div>
       </div>
-
-      <!-- 出撃中ユニット -->
       <h5>出撃中のユニット</h5>
       <div id="unitStatusB"></div>
-
-      <!-- ユニット一覧 -->
       <h5>出撃選択</h5>
       <div class="unitList" id="unitListB"></div>
     </div>
   </div>
 
-  <!-- サイコロ表示 -->
-<div id="diceArea" style="display: none;">
-  <span>行動サイコロ　<strong id="diceResult">-</strong></span>
-  <div style="margin-top: 10px;">
-    <button onclick="rollDice()" id="rollButton">サイコロを振る</button>
-    <button onclick="resetDice()" id="resetButton">リセット</button>
-  </div>
-</div>
-
-
-  <!-- ミッション表示 -->
-<div id="commonMissionArea" class="missionAreaContainer" style="display:none;">
-  <h3>共通ミッション</h3>
-  <div id="commonMissions" class="missionGroup"></div>
-</div>
-
-<div id="teamMissionArea" class="missionAreaContainer" style="display:none;">
-  <div id="teamMissions" style="display: flex; gap: 20px;">
-    <div id="teamAMissions" class="missionGroup"></div>
-    <div id="teamBMissions" class="missionGroup"></div>
-  </div>
-</div>
-
-<div style="margin-top: 20px;"></div>
-
-<div id="buttonArea">
-  <div><button id="logoutButton" onclick="logout()">ログアウト</button></div>
-  <div><button onclick="resetGameData()">ゲーム初期化</button></div>
-</div>
-
   <script src="script.js"></script>
-
 </body>
 </html>

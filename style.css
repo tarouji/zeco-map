@@ -284,13 +284,14 @@ html, body {
 }
 
 #diceArea {
-  margin: 20px auto;
+  margin-top: 15px;
+  margin-bottom: 5px;
   text-align: center;
   background-color: #fff;
   border: 2px solid #888;
   border-radius: 8px;
   padding: 10px 20px;
-  font-size: 16px;
+  font-size: 20px;
   width: fit-content;
 }
 
@@ -299,6 +300,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  margin-top: 15px;  /* 上に余白を少し */
 }
 
 .missionCard.secret-a {
@@ -331,7 +333,7 @@ html, body {
 }
 
 .missionAreaContainer {
-  margin-top: 20px;
+  margin-top: 10px;
   padding: 10px;
   border: 2px solid #ccc;
   border-radius: 8px;
@@ -346,4 +348,16 @@ html, body {
   flex-direction: row;
   align-items: center;
   min-width: 180px;
+}
+
+.missionAreaContainer h4 {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#mapCenterWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;  /* ← これがマップに基づいて中央揃えるキモ */
+  gap: 10px;
 }
