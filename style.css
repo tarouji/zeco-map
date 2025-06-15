@@ -135,20 +135,24 @@ html, body {
 
 .playerInfo {
   font-weight: bold;
+  font-size: 12px;
   margin-bottom: 4px;
   color: #333;
 }
 
 .playerStats {
+  font-size: 12px;
   margin-bottom: 6px;
 }
 
 .unitName {
   font-weight: bold;
+  font-size: 14px;
   margin-bottom: 6px;
 }
 
 .unitHP {
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 6px;

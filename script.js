@@ -342,19 +342,19 @@ function showUnitStatus(team, filename, count = null, playerData = null) {
   const currentHP = playerData?.hp ?? info.hp;  // 🔧 ここを修正！
 
   div.innerHTML = `
-    <div class="unitName">${labelName}</div>
+    <div class="unitName">${labelName}
+      <button onclick="deleteUnit(this)">削除</button>
+    </div>
     <div class="unitHP">
       耐久値 <span class="hp">${currentHP}</span>
       <button onclick="adjustHP(this, +1)">＋</button>
       <button onclick="adjustHP(this, -1)">－</button>
-      <button onclick="deleteUnit(this)">削除</button>
     </div>
     <div class="playerInfo">${playerName}</div>
     <div class="playerStats">技術${skill} 反応${reflex} 精神${mind}</div>
   `;
   container.appendChild(div);
 }
-
 
 function adjustHP(button, delta) {
   const hpSpan = button.parentElement.querySelector(".hp");
