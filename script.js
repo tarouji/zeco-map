@@ -512,7 +512,7 @@ function renderMissions() {
   // A軍ミッションタイトル
   const aTitle = document.createElement("h4");
   if (secretMissionsData?.A) {
-    aTitle.textContent = secretMissionsData.A.revealed ? "A軍（公開中）" : "A軍（非公開）";
+    aTitle.textContent = secretMissionsData.A.revealed ? "A軍（公開）" : "A軍（非公開）";
   } else {
     aTitle.textContent = "A軍（非公開）";
   }
@@ -521,7 +521,7 @@ function renderMissions() {
   // B軍ミッションタイトル
   const bTitle = document.createElement("h4");
   if (secretMissionsData?.B) {
-    bTitle.textContent = secretMissionsData.B.revealed ? "B軍（公開中）" : "B軍（非公開）";
+    bTitle.textContent = secretMissionsData.B.revealed ? "B軍（公開）" : "B軍（非公開）";
   } else {
     bTitle.textContent = "B軍（非公開）";
   }
