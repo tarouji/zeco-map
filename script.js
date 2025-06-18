@@ -60,6 +60,15 @@ function login() {
     return;
   }
 
+  if (
+    skill < 1 || skill > 6 ||
+    reflex < 1 || reflex > 6 ||
+    mind < 1 || mind > 6
+  ) {
+    document.getElementById("loginError").textContent = "技能・反応・精神は1〜6で入力してください。";
+    return;
+  }
+
   if (skill + reflex + mind !== 12) {
     document.getElementById("loginError").textContent = "技能・反応・精神の合計は12にしてください。";
     return;
@@ -226,7 +235,7 @@ function createUnitCard(filename, team) {
   // ★ここでチームチェックを追加
   img.addEventListener("click", () => {
     if (!playerInfo || playerInfo.team !== team) {
-      alert("自軍側でユニットを選択してください。");
+      alert("自軍側のユニットを選択してください。");
       return;
     }
 
