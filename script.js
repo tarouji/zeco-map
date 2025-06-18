@@ -89,6 +89,12 @@ function login() {
   document.querySelector(`#${team === 'A' ? 'leftPanel' : 'rightPanel'} h2`)
     .classList.add(team === 'A' ? 'selected-a' : 'selected-b');
 
+  // 🔽 出撃選択タイトルをプレイヤー名に変更
+  document.querySelector("#unitListA").previousElementSibling.textContent =
+    team === "A" ? `出撃選択（${name}）` : "出撃選択";
+  document.querySelector("#unitListB").previousElementSibling.textContent =
+    team === "B" ? `出撃選択（${name}）` : "出撃選択";
+
   // ✅ 初期化フラグの監視
   firebase.database().ref("resetFlag").on("value", snapshot => {
     if (snapshot.val()) {
@@ -220,7 +226,7 @@ function createUnitCard(filename, team) {
   // ★ここでチームチェックを追加
   img.addEventListener("click", () => {
     if (!playerInfo || playerInfo.team !== team) {
-      alert("自分のチームのユニットのみ選択できます。");
+      alert("自軍側でユニットを選択してください。");
       return;
     }
 
@@ -253,7 +259,6 @@ function highlightAllowedCells(team) {
 function placeUnitOnMap(cellNum, filename) {
   if (!cellNum || cellNum < 1 || cellNum > MAP_ROWS * MAP_COLUMNS) return;
 
-  // 🔒 unitInfoが未読込なら拒否
   if (!unitInfo || !unitInfo[filename]) {
     alert("ユニットデータの読み込みが完了していません。少し待ってから再試行してください。");
     return;
@@ -261,48 +266,57 @@ function placeUnitOnMap(cellNum, filename) {
 
   const team = selectedTeam;
 
-  // s_unit のカウント
-  let count = null;
-  if (filename === "s_unit01.png" || filename === "s_unit02.png") {
-    sUnitCount[filename] = (sUnitCount[filename] || 0) + 1;
-    count = sUnitCount[filename];
-  }
-
   // unitXX の場合は出撃済みとして記録
   if (/^unit\d{2}\.png$/.test(filename)) {
     occupiedUnits.add(filename);
   }
 
-  // 配置済みセルとして記録
   occupiedCells.add(cellNum);
-
-  // 選択ユニット表示から削除
   removeUnitCard(filename);
   clearSelectedUnit();
-
-  // ユニットリスト更新
   renderUnitList("A");
   renderUnitList("B");
 
-  // ✅ 修正：Firebaseに登録（描画は updateUnitsFromFirebase に任せる）
   const safeFilename = filename.replace(/\./g, "_");
   const unitID = `${safeFilename}_${Date.now()}`;
   unitInstanceCount[unitID] = true;
 
-  firebase.database().ref(`units/${unitID}`).set({
-    unitID,
-    filename,
-    cellNum,
-    team,
-    playerName: playerInfo?.name || "unknown",
-    count: sUnitCount[filename] || 1,
-    skill: playerInfo?.skill || 0,
-    reflex: playerInfo?.reflex || 0,
-    mind: playerInfo?.mind || 0,
-    hp: unitInfo[filename]?.hp || 1
-  });
-}
+  // 🔽 s_unit の場合：チーム単位で Firebase 上のカウントを使って保存
+  if (filename === "s_unit01.png" || filename === "s_unit02.png") {
+    firebase.database().ref(`s_unitCounts/${team}`).transaction(current => {
+      return (current || 0) + 1;
+    }).then(result => {
+      const count = result.snapshot.val();
 
+      firebase.database().ref(`units/${unitID}`).set({
+        unitID,
+        filename,
+        cellNum,
+        team,
+        playerName: playerInfo?.name || "unknown",
+        count: count,  // ✅ ここで共有カウントを使う
+        skill: playerInfo?.skill || 0,
+        reflex: playerInfo?.reflex || 0,
+        mind: playerInfo?.mind || 0,
+        hp: unitInfo[filename]?.hp || 1
+      });
+    });
+  } else {
+    // unitXX はカウントなしでそのまま保存
+    firebase.database().ref(`units/${unitID}`).set({
+      unitID,
+      filename,
+      cellNum,
+      team,
+      playerName: playerInfo?.name || "unknown",
+      count: 1,
+      skill: playerInfo?.skill || 0,
+      reflex: playerInfo?.reflex || 0,
+      mind: playerInfo?.mind || 0,
+      hp: unitInfo[filename]?.hp || 1
+    });
+  }
+}
 
 function removeUnitCard(filename) {
   if (/^unit\d{2}\.png$/.test(filename)) {
@@ -388,7 +402,7 @@ function deleteUnit(button) {
 
   // ★ 自軍のユニット以外は削除できない
   if (!playerInfo || playerInfo.team !== team) {
-    alert("自分のチームのユニットのみ削除できます。");
+    alert("自軍のユニットのみ削除できます。");
     return;
   }
 
@@ -554,14 +568,14 @@ function createMissionCard(mission, index, pathPrefix) {
 
   const label = document.createElement("div");
   label.className = "clearLabel";
-  label.innerText = "クリア";
+  label.innerText = "達成";
   label.style.display = mission.cleared ? "block" : "none";
 
   const buttonArea = document.createElement("div");
   buttonArea.className = "missionButtons";
 
   const clearBtn = document.createElement("button");
-  clearBtn.innerText = "クリア";
+  clearBtn.innerText = "達成";
   clearBtn.onclick = () => {
     firebase.database().ref(`${pathPrefix}/${index}/cleared`).set(true);
   };
@@ -869,6 +883,7 @@ function resetGameData() {
   firebase.database().ref("units").remove();
   firebase.database().ref("dice").remove();
   firebase.database().ref("points").remove();  // ここでポイントも削除
+  firebase.database().ref("s_unitCounts").remove();
 
   initializeMissions();
 
