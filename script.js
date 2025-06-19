@@ -577,7 +577,7 @@ function createMissionCard(mission, index, pathPrefix) {
 
   const label = document.createElement("div");
   label.className = "clearLabel";
-  label.innerText = "達成";
+  label.innerText = "達成済";
   label.style.display = mission.cleared ? "block" : "none";
 
   const buttonArea = document.createElement("div");
