@@ -132,6 +132,8 @@ function toggleGameUI(isLoggedIn) {
   document.getElementById("commonMissionArea").style.display = isLoggedIn ? "block" : "none";
   document.getElementById("teamMissionArea").style.display = isLoggedIn ? "block" : "none";
 
+  document.getElementById("eventArea").style.display = isLoggedIn ? "block" : "none";
+
   document.getElementById("logoutButton").style.display = isLoggedIn ? "inline-block" : "none";
   document.getElementById("resetButton").style.display = isLoggedIn ? "inline-block" : "none";
 }
@@ -920,4 +922,59 @@ function resetGameData() {
   occupiedUnits.clear();
   renderUnitList("A");
   renderUnitList("B");
+}
+
+
+// 🎴 イベントカード関連の状態監視
+firebase.database().ref("event").on("value", (snapshot) => {
+  const data = snapshot.val();
+  const container = document.getElementById("eventCardContainer");
+  const triggerBtn = document.getElementById("eventTriggerBtn");
+  const clearBtn = document.getElementById("eventClearBtn");
+
+  container.innerHTML = "";
+
+  if (!data || !data.current) {
+    // 表示なし
+    triggerBtn.disabled = false;
+    clearBtn.disabled = true;
+  } else {
+    // 表示あり
+    const img = document.createElement("img");
+    img.src = `images/event/${data.current}`;
+    img.className = "eventCard";
+    container.appendChild(img);
+    triggerBtn.disabled = true;
+    clearBtn.disabled = false;
+  }
+});
+
+function triggerEvent() {
+  firebase.database().ref("event").once("value").then(snapshot => {
+    const data = snapshot.val() || {};
+    const used = data.used || [];
+    const allCards = Array.from({ length: 20 }, (_, i) => `event${String(i + 1).padStart(2, '0')}.png`);
+    const remaining = allCards.filter(card => !used.includes(card));
+
+    let nextCard;
+    if (remaining.length === 0) {
+      // リセットして再スタート
+      nextCard = allCards[Math.floor(Math.random() * allCards.length)];
+      firebase.database().ref("event").set({
+        current: nextCard,
+        used: [nextCard]
+      });
+    } else {
+      // 未使用からランダム選択
+      nextCard = remaining[Math.floor(Math.random() * remaining.length)];
+      firebase.database().ref("event").set({
+        current: nextCard,
+        used: [...used, nextCard]
+      });
+    }
+  });
+}
+
+function clearEvent() {
+  firebase.database().ref("event/current").remove();
 }

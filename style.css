@@ -365,3 +365,21 @@ html, body {
   align-items: center;  /* ← これがマップに基づいて中央揃えるキモ */
   gap: 10px;
 }
+
+/* 🎴 イベントカード（完全に別管理） */
+.eventCard {
+  width: 400px;              /* ← お好みで変更OK */
+  height: auto;
+  border: 2px solid #444;
+  border-radius: 10px;
+  background-color: white;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* 🎴 イベントカード用ボタンを中央に */
+.eventButtons {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;  /* 中央寄せ */
+  gap: 10px;
+}
