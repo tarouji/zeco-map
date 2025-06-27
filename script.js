@@ -953,7 +953,7 @@ function triggerEvent() {
   firebase.database().ref("event").once("value").then(snapshot => {
     const data = snapshot.val() || {};
     const used = data.used || [];
-    const allCards = Array.from({ length: 20 }, (_, i) => `event${String(i + 1).padStart(2, '0')}.png`);
+    const allCards = Array.from({ length: 30 }, (_, i) => `event${String(i + 1).padStart(2, '0')}.png`);
     const remaining = allCards.filter(card => !used.includes(card));
 
     let nextCard;

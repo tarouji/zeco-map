@@ -94,6 +94,15 @@
         </div>
       </div>
 
+      <!-- イベント表示エリア -->
+      <div id="eventArea" class="missionAreaContainer" style="display: none;">
+        <div id="eventCardContainer"></div>
+        <div class="eventButtons" style="margin-top: 10px;">
+          <button id="eventTriggerBtn" onclick="triggerEvent()">イベント発生</button>
+          <button id="eventClearBtn" onclick="clearEvent()" disabled>消去</button>
+        </div>
+      </div>
+
       <!-- 共通ミッション -->
       <div id="commonMissionArea" class="missionAreaContainer" style="display: none;">
         <h4>共通ミッション</h4>
@@ -106,16 +115,6 @@
         <div id="teamMissions" style="display: flex; gap: 20px;">
           <div id="teamAMissions" class="missionGroup"></div>
           <div id="teamBMissions" class="missionGroup"></div>
-        </div>
-      </div>
-
-      <!-- イベント表示エリア -->
-      <div id="eventArea" class="missionAreaContainer" style="display: none;">
-        <h4>イベント</h4>
-        <div id="eventCardContainer"></div>
-        <div class="eventButtons" style="margin-top: 10px;">
-          <button id="eventTriggerBtn" onclick="triggerEvent()">イベント発生</button>
-          <button id="eventClearBtn" onclick="clearEvent()" disabled>消去</button>
         </div>
       </div>
 
