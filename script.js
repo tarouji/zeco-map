@@ -895,6 +895,7 @@ function resetGameData() {
   firebase.database().ref("dice").remove();
   firebase.database().ref("points").remove();  // ここでポイントも削除
   firebase.database().ref("s_unitCounts").remove();
+  firebase.database().ref("event").remove();  // イベントカード状態を初期化
 
   initializeMissions();
 
