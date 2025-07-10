@@ -14,11 +14,11 @@ const HEX_CENTER_START_Y = 152;
 const HEX_X_INTERVAL = 113;
 const HEX_Y_INTERVAL = 151;
 
-const blockedCells = [17, 146];
+const blockedCells = [];
 
 const initialPositions = {
-  A: [8, 9, 16, 18, 26, 27],
-  B: [136, 137, 145, 147, 154, 155]
+  A: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  B: [154, 155, 156, 157, 158, 159, 160, 161, 162]
 };
 
 let movingUnit = null;
@@ -638,11 +638,9 @@ function createSecretMissionCard(mission, team, isRevealed) {
 
 
 function initializeMissions() {
-  const all = [
-    "mission01.png", "mission02.png", "mission03.png", "mission04.png",
-    "mission05.png", "mission06.png", "mission07.png", "mission08.png",
-    "mission09.png", "mission10.png", "mission11.png", "mission12.png"
-  ];
+  const all = Array.from({ length: 14 }, (_, i) =>
+  `mission${String(i + 1).padStart(2, '0')}.png`
+  );
 
   const shuffled = all.sort(() => 0.5 - Math.random());
   const common = shuffled.slice(0, 5);     // 共通5枚
