@@ -826,7 +826,7 @@ function updateUnitsFromFirebase(units) {
       document.getElementById("unitLayer").appendChild(label);
     }
 
-    // ✅ ユニット画像クリック → 出目に応じた移動範囲を表示
+    // ✅ ユニットをクリック → サイコロ未振りなら全マス、振ってあれば出目で範囲制限
     img.addEventListener("click", () => {
       if (playerInfo && playerInfo.team !== u.team) return;
 
@@ -840,12 +840,34 @@ function updateUnitsFromFirebase(units) {
       movingUnit = { img, filename: u.filename, unitID: clickedUnitID };
       isMovingMode = true;
 
-      // 🎲 Firebase から出目を取得して移動力を取得
+      // 🎲 サイコロの出目を確認
       firebase.database().ref("dice/value").once("value").then(snapshot => {
-        const diceVal = snapshot.val() || 6;
-        const moveRange = unitInfo[u.filename]?.move?.[diceVal - 1] || 0;
+        const rawDice = snapshot.val();
 
-        highlightMovableCells(u.cellNum, moveRange);
+        if (rawDice === null) {
+          // サイコロを振っていない → 全空きマスをハイライト
+          document.querySelectorAll(".hexLabel").forEach(label => {
+            const cell = Number(label.dataset.cellnum);
+            label.classList.remove("highlight-move");
+
+            if (!occupiedCells.has(cell) && !blockedCells.includes(cell)) {
+              label.classList.add("highlight-move");
+              label.onclick = () => {
+                moveUnitToCell(movingUnit, cell);
+                clearMoveMode();
+              };
+            } else {
+              label.onclick = () => {
+                clearMoveMode();
+              };
+            }
+          });
+        } else {
+          // サイコロ振ってある → 出目に応じた移動範囲
+          const diceVal = rawDice;
+          const moveRange = unitInfo[u.filename]?.move?.[diceVal - 1] || 0;
+          highlightMovableCells(u.cellNum, moveRange);
+        }
       });
     });
 
