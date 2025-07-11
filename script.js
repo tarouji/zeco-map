@@ -787,7 +787,6 @@ function resetDice() {
   document.getElementById("rollButton").disabled = false;
 }
 
-
 function updateUnitsFromFirebase(units) {
   const containerA = document.getElementById("unitListA");
   const containerB = document.getElementById("unitListB");
@@ -827,12 +826,12 @@ function updateUnitsFromFirebase(units) {
       document.getElementById("unitLayer").appendChild(label);
     }
 
+    // ✅ ユニット画像クリック → 出目に応じた移動範囲を表示
     img.addEventListener("click", () => {
       if (playerInfo && playerInfo.team !== u.team) return;
 
       const clickedUnitID = u.unitID || key;
 
-      // ✅ 同じユニットをもう一度クリックしたらキャンセル
       if (isMovingMode && movingUnit?.unitID === clickedUnitID) {
         clearMoveMode();
         return;
@@ -841,21 +840,12 @@ function updateUnitsFromFirebase(units) {
       movingUnit = { img, filename: u.filename, unitID: clickedUnitID };
       isMovingMode = true;
 
-      document.querySelectorAll(".hexLabel").forEach(label => {
-        const cell = Number(label.dataset.cellnum);
-        label.classList.remove("highlight-move");
+      // 🎲 Firebase から出目を取得して移動力を取得
+      firebase.database().ref("dice/value").once("value").then(snapshot => {
+        const diceVal = snapshot.val() || 6;
+        const moveRange = unitInfo[u.filename]?.move?.[diceVal - 1] || 0;
 
-        if (!occupiedCells.has(cell)) {
-          label.classList.add("highlight-move");
-          label.onclick = () => {
-            moveUnitToCell(movingUnit, cell);
-            clearMoveMode();
-          };
-        } else {
-          label.onclick = () => {
-            clearMoveMode();
-          };
-        }
+        highlightMovableCells(u.cellNum, moveRange);
       });
     });
 
@@ -976,4 +966,46 @@ function triggerEvent() {
 
 function clearEvent() {
   firebase.database().ref("event/current").remove();
+}
+
+// マス番号を (row, col) に変換（縦9マス × 横18列）
+function getCellCoordinates(cellNum) {
+  const index = cellNum - 1;
+  const col = Math.floor(index / MAP_ROWS);
+  const row = index % MAP_ROWS;
+  return { row, col };
+}
+
+// 六角マス同士の距離を計算（オフセット→キューブ換算）
+function getHexDistance(cellA, cellB) {
+  const a = getCellCoordinates(cellA);
+  const b = getCellCoordinates(cellB);
+
+  const dx = b.col - a.col;
+  const dy = b.row - a.row - Math.floor((b.col - a.col + (a.col % 2)) / 2);
+  const dz = -dx - dy;
+
+  return Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz));
+}
+
+function highlightMovableCells(startCellNum, moveRange) {
+  clearMoveHighlights();  // まず前回のハイライトを消す
+
+  const totalCells = MAP_ROWS * MAP_COLUMNS;
+  for (let cellNum = 1; cellNum <= totalCells; cellNum++) {
+    if (blockedCells.includes(cellNum)) continue;         // ブロックマスはスキップ
+    if (occupiedCells.has(cellNum)) continue;             // すでに他ユニットがいる場合もスキップ
+
+    const dist = getHexDistance(startCellNum, cellNum);
+    if (dist <= moveRange) {
+      const label = document.querySelector(`.hexLabel[data-cellnum="${cellNum}"]`);
+      if (label) {
+        label.classList.add("highlight-move");
+        label.onclick = () => {
+          moveUnitToCell(movingUnit, cellNum);
+          clearMoveMode();
+        };
+      }
+    }
+  }
 }
